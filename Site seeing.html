@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartStop AI — Namma Metro</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ───────────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:     #0A1628;
+  --navy:    #0F2D55;
+  --teal:    #0B7A75;
+  --aqua:    #11C5BF;
+  --coral:   #E8473F;
+  --amber:   #F5A623;
+  --emerald: #1DB954;
+  --white:   #FFFFFF;
+  --surface: #F2F7FB;
+  --card:    #FFFFFF;
+  --border:  #D4E2EE;
+  --muted:   #6B8CA8;
+  --body:    #1C3550;
+  --grad: linear-gradient(135deg,#0B7A75 0%,#0F2D55 60%,#0A1628 100%);
+  --glow: 0 0 30px rgba(17,197,191,0.25);
+  --shadow: 0 4px 24px rgba(10,22,40,0.10);
+  --shadow-lg: 0 12px 48px rgba(10,22,40,0.16);
+  --r: 16px;
+  --r-sm: 10px;
+  --ff-head: 'Space Grotesk', sans-serif;
+  --ff-body: 'DM Sans', sans-serif;
+  --ff-mono: 'JetBrains Mono', monospace;
+}
+
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:var(--ff-body);background:var(--surface);color:var(--body);min-height:100vh;overflow-x:hidden}
+
+/* ── Utility ─────────────────────────────────────────────────── */
+.hidden{display:none!important}
+.flex{display:flex}
+.col{flex-direction:column}
+.gap-1{gap:8px}.gap-2{gap:16px}.gap-3{gap:24px}.gap-4{gap:32px}
+.align-c{align-items:center}
+.justify-c{justify-content:center}
+.justify-b{justify-content:space-between}
+.text-c{text-align:center}
+.mono{font-family:var(--ff-mono)}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.tag-teal{background:rgba(11,122,117,.12);color:var(--teal)}
+.tag-coral{background:rgba(232,71,63,.12);color:var(--coral)}
+.tag-amber{background:rgba(245,166,35,.15);color:#C87600}
+.tag-emerald{background:rgba(29,185,84,.12);color:#0F8C3E}
+.badge{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;flex-shrink:0}
+
+/* ── Toast ───────────────────────────────────────────────────── */
+#toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);
+  z-index:9999;padding:14px 24px;border-radius:var(--r-sm);
+  font-family:var(--ff-head);font-weight:600;font-size:14px;
+  box-shadow:var(--shadow-lg);transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.success{background:#0D1F15;color:#4ADE80;border:1px solid rgba(74,222,128,.3)}
+#toast.warning{background:#1F1500;color:#FBB040;border:1px solid rgba(251,176,64,.3)}
+#toast.danger{background:#1F0808;color:#F87171;border:1px solid rgba(248,113,113,.3)}
+#toast.info{background:#0A1628;color:#67E8F9;border:1px solid rgba(103,232,249,.3)}
+
+/* ── Navbar ──────────────────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  background:rgba(10,22,40,.96);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(17,197,191,.15);
+  padding:0 24px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-brand .logo{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--grad);display:grid;place-items:center;
+}
+.nav-brand .logo svg{width:20px;height:20px;stroke:white;fill:none;stroke-width:2}
+.nav-brand h1{font-family:var(--ff-head);font-size:17px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.nav-brand span{color:var(--aqua)}
+.nav-tabs{display:flex;gap:4px}
+.nav-tab{
+  padding:7px 16px;border-radius:8px;border:none;
+  font-family:var(--ff-body);font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .2s;background:transparent;color:rgba(255,255,255,.55)
+}
+.nav-tab:hover{color:rgba(255,255,255,.9);background:rgba(255,255,255,.06)}
+.nav-tab.active{background:rgba(17,197,191,.18);color:var(--aqua)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 8px var(--emerald);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+.nav-user{display:flex;align-items:center;gap:8px}
+.nav-avatar{width:34px;height:34px;border-radius:50%;background:var(--grad);display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;border:2px solid rgba(17,197,191,.4)}
+
+/* ── Page Wrapper ────────────────────────────────────────────── */
+.page{padding-top:64px;min-height:100vh}
+.view{display:none}
+.view.active{display:block}
+
+/* ── PASSENGER VIEW ──────────────────────────────────────────── */
+/* Hero Banner */
+.hero{
+  background:var(--grad);
+  padding:40px 32px 32px;position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:300px;height:300px;border-radius:50%;
+  background:rgba(17,197,191,.1);
+}
+.hero::after{
+  content:'';position:absolute;bottom:-80px;left:20%;
+  width:200px;height:200px;border-radius:50%;
+  background:rgba(255,255,255,.05);
+}
+.hero-content{position:relative;z-index:1;max-width:600px}
+.hero h2{font-family:var(--ff-head);font-size:26px;font-weight:700;color:#fff;margin-bottom:6px}
+.hero p{color:rgba(255,255,255,.65);font-size:14px;margin-bottom:20px}
+.hero-stats{display:flex;gap:24px}
+.stat-chip{
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;padding:10px 16px;
+}
+.stat-chip .val{font-family:var(--ff-head);font-size:22px;font-weight:700;color:#fff}
+.stat-chip .lbl{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+
+/* Journey Card */
+.content-grid{
+  display:grid;grid-template-columns:1fr 1.1fr;gap:20px;
+  padding:24px;max-width:1100px;margin:0 auto;
+}
+@media(max-width:800px){.content-grid{grid-template-columns:1fr}}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:24px;box-shadow:var(--shadow);
+}
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.card-head h3{font-family:var(--ff-head);font-size:16px;font-weight:600;color:var(--ink)}
+.card-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center}
+.ci-teal{background:rgba(11,122,117,.1)}
+.ci-coral{background:rgba(232,71,63,.1)}
+.ci-navy{background:rgba(15,45,85,.1)}
+.ci-amber{background:rgba(245,166,35,.1)}
+
+/* Form Elements */
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+select,input{
+  width:100%;padding:11px 14px;border-radius:var(--r-sm);
+  border:1.5px solid var(--border);background:var(--surface);
+  font-family:var(--ff-body);font-size:14px;color:var(--body);
+  transition:border-color .2s,box-shadow .2s;outline:none;
+}
+select:focus,input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(11,122,117,.12)}
+.form-row{margin-bottom:16px}
+
+/* AI Prediction Card */
+.ai-prediction{
+  border-radius:var(--r-sm);overflow:hidden;margin:16px 0;
+  border:1.5px solid rgba(11,122,117,.3);
+  background:linear-gradient(135deg,rgba(11,122,117,.06),rgba(17,197,191,.04));
+  display:none;
+}
+.ai-pred-head{
+  background:linear-gradient(90deg,var(--teal),#0D9E99);
+  padding:12px 16px;display:flex;align-items:center;gap:10px;
+}
+.ai-pred-head span{font-size:11px;font-weight:700;color:rgba(255,255,255,.8);letter-spacing:.08em;text-transform:uppercase}
+.ai-pred-body{padding:16px}
+.ai-dest{font-family:var(--ff-head);font-size:20px;font-weight:700;color:var(--teal);margin-bottom:4px}
+.ai-meta{font-size:12px;color:var(--muted);margin-bottom:12px}
+.conf-track{background:rgba(11,122,117,.12);border-radius:999px;height:6px;overflow:hidden}
+.conf-fill{background:linear-gradient(90deg,var(--teal),var(--aqua));height:100%;width:0;border-radius:999px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.conf-label{font-size:11px;color:var(--teal);font-weight:600;margin-top:6px}
+.ai-actions{display:flex;gap:8px;margin-top:14px}
+
+/* Buttons */
+.btn{
+  padding:10px 18px;border-radius:var(--r-sm);border:none;
+  font-family:var(--ff-body);font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;
+}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:#0A6B67;transform:translateY(-1px);box-shadow:0 4px 16px rgba(11,122,117,.35)}
+.btn-secondary{background:var(--surface);color:var(--body);border:1.5px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-coral{background:var(--coral);color:#fff}
+.btn-coral:hover{background:#C93E37;transform:translateY(-1px);box-shadow:0 4px 16px rgba(232,71,63,.35)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:#0A2448}
+.btn-full{width:100%;justify-content:center}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-danger{background:linear-gradient(135deg,#E8473F,#C0392B);color:#fff;font-size:15px;font-weight:700;padding:14px;letter-spacing:.04em}
+.btn-danger:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 6px 20px rgba(232,71,63,.4)}
+
+/* Manual Stop Select */
+.manual-wrap{margin-top:12px;display:none}
+
+/* Tracking Active State */
+#tracking-active{display:none}
+.tracking-badge{
+  background:linear-gradient(135deg,rgba(11,122,117,.1),rgba(17,197,191,.08));
+  border:1.5px solid rgba(11,122,117,.25);border-radius:var(--r-sm);
+  padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:16px;
+}
+.tracking-badge .pulse-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:pulse 2s infinite;flex-shrink:0}
+.tracking-badge .text strong{font-family:var(--ff-head);font-size:13px;color:var(--teal);display:block}
+.tracking-badge .text span{font-size:12px;color:var(--muted)}
+
+/* ── Progress / Route Timeline ───────────────────────────────── */
+.map-card-inner{padding-bottom:20px}
+.destination-display{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--r-sm);padding:14px;margin-bottom:20px;
+}
+.destination-display .lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.destination-display .dest{font-family:var(--ff-head);font-size:18px;font-weight:700;color:var(--navy);margin-top:4px}
+.destination-display.locked{background:linear-gradient(135deg,rgba(11,122,117,.08),rgba(17,197,191,.04));border-color:rgba(11,122,117,.3)}
+.destination-display.locked .dest{color:var(--teal)}
+
+.route-timeline{position:relative;padding-left:22px}
+.route-timeline::before{content:'';position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:var(--border)}
+.stop-row{
+  position:relative;padding:8px 0 8px 16px;cursor:default;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.stop-row::before{
+  content:'';position:absolute;left:-16px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;border-radius:50%;background:var(--border);
+  border:3px solid var(--card);transition:all .3s;
+}
+.stop-row.passed::before{background:var(--emerald);box-shadow:0 0 8px rgba(29,185,84,.4)}
+.stop-row.current::before{background:var(--aqua);box-shadow:0 0 12px rgba(17,197,191,.5);animation:pulse 1.5s infinite}
+.stop-row.target::before{background:var(--coral);box-shadow:0 0 10px rgba(232,71,63,.4)}
+.stop-row .stop-name{font-size:13px;color:var(--muted)}
+.stop-row.passed .stop-name{color:var(--emerald)}
+.stop-row.current .stop-name{font-weight:700;color:var(--aqua)}
+.stop-row.target .stop-name{font-weight:700;color:var(--coral)}
+.stop-row .stop-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px}
+
+.progress-bar-wrap{margin-bottom:20px}
+.progress-lbl{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;display:flex;justify-content:space-between}
+.progress-track{background:var(--border);border-radius:999px;height:8px;overflow:hidden}
+.progress-fill{background:linear-gradient(90deg,var(--teal),var(--aqua));height:100%;width:0;border-radius:999px;transition:width .8s ease}
+
+.next-btn{
+  width:100%;padding:12px;border-radius:var(--r-sm);border:1.5px dashed var(--teal);
+  background:transparent;color:var(--teal);font-family:var(--ff-body);font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;margin-top:12px;
+}
+.next-btn:hover{background:rgba(11,122,117,.08)}
+
+/* Elderly Mode Toggle */
+.elderly-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(245,166,35,.08);border:1.5px solid rgba(245,166,35,.25);
+  border-radius:var(--r-sm);padding:12px 16px;margin-bottom:16px;
+}
+.elderly-row .info strong{font-size:13px;font-weight:600;color:var(--body);display:block}
+.elderly-row .info span{font-size:11px;color:var(--muted)}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-track{
+  position:absolute;inset:0;border-radius:999px;
+  background:var(--border);cursor:pointer;transition:.3s;
+}
+.toggle input:checked+.toggle-track{background:var(--amber)}
+.toggle-track::after{
+  content:'';position:absolute;height:18px;width:18px;
+  left:3px;bottom:3px;border-radius:50%;background:#fff;
+  transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2);
+}
+.toggle input:checked+.toggle-track::after{transform:translateX(20px)}
+
+/* ── DRIVER DASHBOARD VIEW ───────────────────────────────────── */
+.dash-grid{padding:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1200px;margin:0 auto}
+@media(max-width:900px){.dash-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+}
+.kpi-card::before{content:'';position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:.06}
+.kpi-card.k-teal::before{background:var(--teal)}
+.kpi-card.k-coral::before{background:var(--coral)}
+.kpi-card.k-amber::before{background:var(--amber)}
+.kpi-card.k-emerald::before{background:var(--emerald)}
+.kpi-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.kpi-val{font-family:var(--ff-head);font-size:34px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.kpi-val.k-teal{color:var(--teal)}
+.kpi-val.k-coral{color:var(--coral)}
+.kpi-val.k-amber{color:#D4890A}
+.kpi-val.k-emerald{color:var(--emerald)}
+.kpi-sub{font-size:12px;color:var(--muted)}
+.kpi-trend{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;margin-top:6px}
+.trend-up{color:var(--emerald)}
+.trend-dn{color:var(--coral)}
+
+.dash-lower{padding:0 24px 24px;display:grid;grid-template-columns:1.4fr 1fr;gap:20px;max-width:1200px;margin:0 auto}
+@media(max-width:800px){.dash-lower{grid-template-columns:1fr}}
+
+/* Fleet Chart */
+.fleet-item{margin-bottom:14px}
+.fleet-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.fleet-meta .stop{font-size:13px;font-weight:600;color:var(--body)}
+.fleet-meta .pax{font-size:12px;color:var(--muted)}
+.fleet-track{background:var(--border);border-radius:999px;height:10px;overflow:hidden}
+.fleet-fill{height:100%;border-radius:999px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+
+/* Event Log */
+.event-log{
+  background:#060F1E;border:1px solid rgba(17,197,191,.15);
+  border-radius:var(--r);padding:16px;height:260px;overflow-y:auto;font-family:var(--ff-mono);
+}
+.event-log::-webkit-scrollbar{width:4px}
+.event-log::-webkit-scrollbar-track{background:transparent}
+.event-log::-webkit-scrollbar-thumb{background:rgba(17,197,191,.3);border-radius:999px}
+.log-line{font-size:11px;margin-bottom:8px;line-height:1.5}
+.log-time{color:rgba(17,197,191,.6)}
+.log-normal{color:rgba(255,255,255,.65)}
+.log-alert{color:#FBB040}
+.log-danger{color:#F87171}
+.log-success{color:#4ADE80}
+
+/* Route Map (schematic) */
+.route-map{display:flex;flex-direction:column;gap:0}
+.map-stop{
+  display:flex;align-items:center;gap:10px;padding:6px 0;
+  position:relative;
+}
+.map-stop::after{
+  content:'';position:absolute;left:9px;bottom:-6px;
+  width:2px;height:12px;background:var(--border);z-index:0;
+}
+.map-stop:last-child::after{display:none}
+.map-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;z-index:1;display:grid;place-items:center;font-size:8px;font-weight:700;color:#fff}
+.map-dot-norm{background:var(--border)}
+.map-dot-active{background:var(--aqua);box-shadow:0 0 10px rgba(17,197,191,.5)}
+.map-dot-target{background:var(--coral)}
+.map-dot-pass{background:var(--emerald)}
+.map-stop .sname{font-size:12px;color:var(--muted)}
+.map-stop.active-stop .sname{color:var(--aqua);font-weight:700}
+.map-stop.target-stop .sname{color:var(--coral);font-weight:700}
+
+/* ── SENSOR / IoT VIEW ───────────────────────────────────────── */
+.sensor-grid{padding:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1200px;margin:0 auto}
+@media(max-width:900px){.sensor-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.sensor-grid{grid-template-columns:1fr}}
+.sensor-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px;box-shadow:var(--shadow);
+}
+.sensor-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.sensor-title{font-family:var(--ff-head);font-size:14px;font-weight:600;color:var(--ink)}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700}
+.sp-on{background:rgba(29,185,84,.12);color:var(--emerald)}
+.sp-off{background:rgba(232,71,63,.1);color:var(--coral)}
+.sp-warn{background:rgba(245,166,35,.12);color:#C87600}
+.sensor-val{font-family:var(--ff-head);font-size:40px;font-weight:700;color:var(--teal);margin:8px 0}
+.sensor-unit{font-size:13px;color:var(--muted);font-weight:400}
+.mini-graph{height:48px;background:var(--surface);border-radius:8px;margin-top:12px;overflow:hidden;position:relative}
+.mini-bar{position:absolute;bottom:0;background:linear-gradient(180deg,var(--aqua),var(--teal));border-radius:4px 4px 0 0;transition:height .5s}
+
+.sensor-row-full{grid-column:1/-1}
+.hw-spec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+.hw-spec-item{background:var(--surface);border-radius:10px;padding:12px;border:1px solid var(--border)}
+.hw-spec-item .hw-name{font-size:12px;font-weight:600;color:var(--body);margin-bottom:4px}
+.hw-spec-item .hw-val{font-family:var(--ff-mono);font-size:11px;color:var(--muted)}
+
+/* Door counter simulation */
+.door-sim{display:flex;gap:12px;margin-top:12px}
+.door-btn{
+  flex:1;padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--border);
+  background:var(--surface);font-family:var(--ff-head);font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.door-btn.board{color:var(--emerald);border-color:rgba(29,185,84,.3)}
+.door-btn.board:hover{background:rgba(29,185,84,.1)}
+.door-btn.alight{color:var(--coral);border-color:rgba(232,71,63,.3)}
+.door-btn.alight:hover{background:rgba(232,71,63,.1)}
+
+/* ── ELDERLY ASSIST VIEW ─────────────────────────────────────── */
+.elder-wrap{padding:24px;max-width:800px;margin:0 auto}
+.elder-hero{
+  background:linear-gradient(135deg,#0F2D55,#1A4A80);
+  border-radius:var(--r);padding:28px;text-align:center;
+  margin-bottom:20px;box-shadow:var(--shadow-lg);
+}
+.elder-hero h2{font-family:var(--ff-head);font-size:28px;font-weight:700;color:#fff;margin-bottom:6px}
+.elder-hero p{color:rgba(255,255,255,.65);font-size:15px;margin-bottom:20px}
+.elder-dest-box{
+  background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.2);
+  border-radius:var(--r-sm);padding:20px;margin-bottom:20px;
+}
+.elder-dest-box .lbl{font-size:12px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em}
+.elder-dest-box .dest{font-family:var(--ff-head);font-size:26px;font-weight:700;color:#fff;margin-top:6px}
+.elder-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.elder-action-btn{
+  padding:20px;border-radius:var(--r-sm);border:none;
+  font-family:var(--ff-head);font-size:16px;font-weight:700;
+  cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.sos-big{
+  grid-column:1/-1;background:var(--coral);color:#fff;
+  padding:24px;font-size:20px;box-shadow:0 4px 20px rgba(232,71,63,.4);
+  animation:sos-idle 3s ease-in-out infinite;
+}
+@keyframes sos-idle{0%,100%{box-shadow:0 4px 20px rgba(232,71,63,.4)}50%{box-shadow:0 4px 30px rgba(232,71,63,.7)}}
+.sos-big:hover{transform:scale(1.02);box-shadow:0 6px 30px rgba(232,71,63,.6)!important}
+.elder-action-btn.ea-green{background:rgba(29,185,84,.15);color:var(--emerald);border:2px solid rgba(29,185,84,.3)}
+.elder-action-btn.ea-blue{background:rgba(17,197,191,.1);color:var(--teal);border:2px solid rgba(17,197,191,.25)}
+.elder-action-btn svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:2}
+.caregiver-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.cg-row{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--r-sm);margin-bottom:8px;background:var(--surface)}
+.cg-avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.cg-info .name{font-weight:600;font-size:14px;color:var(--body)}
+.cg-info .role{font-size:12px;color:var(--muted)}
+.cg-notify{
+  padding:7px 14px;border-radius:8px;border:none;
+  font-family:var(--ff-body);font-size:12px;font-weight:600;
+  cursor:pointer;background:rgba(11,122,117,.1);color:var(--teal);
+  transition:all .2s;margin-left:auto;
+}
+.cg-notify:hover{background:rgba(11,122,117,.2)}
+.milestone-feed{margin-top:16px}
+.milestone-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.milestone-item:last-child{border-bottom:none}
+.ms-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex-shrink:0}
+.ms-text .ms-title{font-size:13px;font-weight:600;color:var(--body)}
+.ms-text .ms-time{font-size:11px;color:var(--muted)}
+
+/* ── PATENT / ABOUT VIEW ─────────────────────────────────────── */
+.patent-wrap{padding:24px;max-width:1100px;margin:0 auto}
+.patent-hero{
+  background:var(--grad);border-radius:var(--r);padding:36px;
+  margin-bottom:24px;position:relative;overflow:hidden;
+}
+.patent-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(17,197,191,.1)}
+.patent-hero h2{font-family:var(--ff-head);font-size:26px;font-weight:700;color:#fff;margin-bottom:8px}
+.patent-hero p{color:rgba(255,255,255,.65);max-width:600px;line-height:1.7}
+.patent-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.patent-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 14px;font-size:12px;color:#fff;font-weight:500}
+.patent-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.patent-grid{grid-template-columns:1fr}}
+.claims-list{list-style:none;margin-top:8px}
+.claims-list li{
+  display:flex;gap:12px;padding:12px;border-radius:var(--r-sm);
+  margin-bottom:8px;background:var(--surface);border:1px solid var(--border);
+}
+.claim-num{
+  width:28px;height:28px;border-radius:8px;background:var(--teal);
+  color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;flex-shrink:0;
+}
+.claim-text{font-size:13px;color:var(--body);line-height:1.5}
+.gap-grid{display:grid;gap:10px;margin-top:8px}
+.gap-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;display:flex;gap:12px;align-items:flex-start}
+.gap-icon{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;background:rgba(232,71,63,.1)}
+.gap-icon svg{width:16px;height:16px;stroke:var(--coral);fill:none;stroke-width:2}
+.gap-text .t{font-size:13px;font-weight:600;color:var(--body);margin-bottom:2px}
+.gap-text .d{font-size:12px;color:var(--muted);line-height:1.5}
+.inventor-row{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface);border-radius:var(--r-sm);margin-bottom:10px;border:1px solid var(--border)}
+.inv-avatar{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-family:var(--ff-head);font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.inv-info .name{font-weight:600;font-size:14px;color:var(--body)}
+.inv-info .uid{font-family:var(--ff-mono);font-size:11px;color:var(--muted)}
+.inv-info .inst{font-size:11px;color:var(--teal)}
+.company-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.company-item{padding:12px;background:var(--surface);border-radius:var(--r-sm);border:1px solid var(--border)}
+.company-item .cn{font-size:13px;font-weight:600;color:var(--body);margin-bottom:2px}
+.company-item .cu{font-family:var(--ff-mono);font-size:10px;color:var(--muted)}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.fadein{animation:fadeUp .4s ease forwards}
+</style>
+</head>
+<body>
+
+<!-- ── Toast ──────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── Navbar ─────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M8 17l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 7v5l3 3"/></svg>
+    </div>
+    <h1>SmartStop<span>AI</span></h1>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchView('passenger',this)">🚇 Passenger</button>
+    <button class="nav-tab" onclick="switchView('driver',this)">🖥️ Driver Dashboard</button>
+    <button class="nav-tab" onclick="switchView('sensor',this)">📡 IoT Sensors</button>
+    <button class="nav-tab" onclick="switchView('elderly',this)">👴 Elderly Assist</button>
+    <button class="nav-tab" onclick="switchView('patent',this)">📋 Patent Info</button>
+  </div>
+  <div class="nav-right">
+    <div class="live-dot"></div>
+    <span style="font-size:12px;color:rgba(255,255,255,.5)">LIVE</span>
+    <div class="nav-user">
+      <div class="nav-avatar" id="nav-avatar">?</div>
+      <span style="font-size:13px;color:rgba(255,255,255,.7)" id="nav-name">Guest</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PASSENGER VIEW                                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page view active" id="view-passenger">
+
+  <!-- Login overlay -->
+  <div id="login-overlay" style="position:fixed;inset:0;top:64px;z-index:500;background:rgba(242,247,251,.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center">
+    <div class="card fadein" style="width:380px;text-align:center">
+      <div class="card-icon ci-teal" style="width:56px;height:56px;border-radius:14px;margin:0 auto 16px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <h2 style="font-family:var(--ff-head);font-size:22px;font-weight:700;color:var(--ink);margin-bottom:6px">Welcome to SmartStop AI</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Enter your name to begin your smart journey</p>
+      <div class="form-row">
+        <input type="text" id="login-name" placeholder="Your full name" style="text-align:center;font-size:15px" onkeydown="if(event.key==='Enter')appLogin()">
+      </div>
+      <button class="btn btn-primary btn-full" style="font-size:15px;padding:13px" onclick="appLogin()">Start Journey →</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px">Namma Metro  ·  Bengaluru</p>
+    </div>
+  </div>
+
+  <!-- Hero Banner -->
+  <div class="hero">
+    <div class="hero-content">
+      <div class="tag tag-teal" style="margin-bottom:12px">● Namma Metro — Bengaluru</div>
+      <h2>AI-Powered Journey Assistant</h2>
+      <p>Personalised destination prediction · Pre-arrival alerts · Elderly assistance</p>
+      <div class="hero-stats">
+        <div class="stat-chip">
+          <div class="val" id="stat-onboard">0</div>
+          <div class="lbl">Onboard</div>
+        </div>
+        <div class="stat-chip">
+          <div class="val">95%</div>
+          <div class="lbl">AI Accuracy</div>
+        </div>
+        <div class="stat-chip">
+          <div class="val" id="stat-stops">37</div>
+          <div class="lbl">Stops</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="content-grid">
+
+    <!-- Left: Journey Setup -->
+    <div class="card" id="journey-card">
+      <div class="card-head">
+        <h3>Journey Setup</h3>
+        <div class="card-icon ci-teal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M3 12h18M12 3l9 9-9 9"/></svg>
+        </div>
+      </div>
+
+      <div id="setup-form">
+        <!-- Elderly Toggle -->
+        <div class="elderly-row">
+          <div class="info">
+            <strong>Elderly / Accessibility Mode</strong>
+            <span>Enhanced alerts + voice guidance</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="elderly-toggle" onchange="toggleElderly()">
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>Metro Line</label>
+          <select id="line-sel" onchange="loadStops()">
+            <option value="">— Select Line —</option>
+            <option value="Purple">Purple Line</option>
+            <option value="Green">Green Line</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Boarding Station</label>
+          <select id="src-sel" onchange="runAI()">
+            <option value="">— Select Entry Stop —</option>
+          </select>
+        </div>
+
+        <!-- AI Prediction Block -->
+        <div class="ai-prediction" id="ai-block">
+          <div class="ai-pred-head">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <span>✨ AI Predicted Destination</span>
+          </div>
+          <div class="ai-pred-body">
+            <div class="ai-dest" id="ai-dest-text">—</div>
+            <div class="ai-meta" id="ai-meta-text"></div>
+            <div class="conf-track"><div class="conf-fill" id="ai-conf-fill"></div></div>
+            <div class="conf-label" id="ai-conf-label"></div>
+            <div class="ai-actions">
+              <button class="btn btn-primary btn-sm" onclick="confirmJourney(true)">✓ Confirm Destination</button>
+              <button class="btn btn-secondary btn-sm" onclick="showManual()">Change →</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="manual-wrap" id="manual-wrap">
+          <div class="form-row">
+            <label>Select Your Destination</label>
+            <select id="manual-sel"></select>
+          </div>
+          <button class="btn btn-navy btn-full" onclick="confirmJourney(false)">Confirm Journey</button>
+        </div>
+      </div>
+
+      <!-- Tracking Active -->
+      <div id="tracking-active">
+        <div class="tracking-badge">
+          <div class="pulse-dot"></div>
+          <div class="text">
+            <strong>AI TRACKING ACTIVE</strong>
+            <span id="tracking-sub">Monitoring your journey...</span>
+          </div>
+        </div>
+        <button class="btn btn-danger btn-full" onclick="triggerSOS()">🆘 SOS EMERGENCY</button>
+        <button class="btn btn-secondary btn-full" style="margin-top:10px" onclick="resetJourney()">End Journey</button>
+      </div>
+    </div>
+
+    <!-- Right: Route Progress -->
+    <div class="card" id="map-card" style="opacity:.3;pointer-events:none">
+      <div class="card-head">
+        <h3>Live Route Progress</h3>
+        <div class="card-icon ci-navy">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+      </div>
+      <div class="map-card-inner">
+        <div class="destination-display" id="dest-display">
+          <div class="lbl">Tracking to Destination</div>
+          <div class="dest" id="tracking-dest">—</div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-lbl">
+            <span id="prog-label">Journey Progress</span>
+            <span id="prog-pct">0%</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+        </div>
+        <div class="route-timeline" id="route-path"></div>
+        <button class="next-btn" onclick="advanceStation()">▶ Arrived at Next Station</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- DRIVER DASHBOARD VIEW                                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page view" id="view-driver">
+  <div class="dash-grid">
+    <div class="kpi-card k-teal">
+      <div class="kpi-label">Total Onboard</div>
+      <div class="kpi-val k-teal" id="kpi-onboard">0</div>
+      <div class="kpi-sub">Passengers in vehicle</div>
+      <div class="kpi-trend trend-up">↑ Live</div>
+    </div>
+    <div class="kpi-card k-coral">
+      <div class="kpi-label">SOS Alerts</div>
+      <div class="kpi-val k-coral" id="kpi-sos">0</div>
+      <div class="kpi-sub">Active emergencies</div>
+    </div>
+    <div class="kpi-card k-amber">
+      <div class="kpi-label">AI Predictions</div>
+      <div class="kpi-val k-amber" id="kpi-pred">0</div>
+      <div class="kpi-sub">Destinations inferred</div>
+    </div>
+    <div class="kpi-card k-emerald">
+      <div class="kpi-label">Stops Served</div>
+      <div class="kpi-val k-emerald" id="kpi-stops">0</div>
+      <div class="kpi-sub">This session</div>
+    </div>
+  </div>
+
+  <div class="dash-lower">
+    <!-- Off-boarding Demand Chart -->
+    <div class="card">
+      <div class="card-head">
+        <h3>Off-boarding Demand per Stop</h3>
+        <div class="card-icon ci-teal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><rect x="3" y="10" width="4" height="11"/><rect x="9.5" y="7" width="4" height="14"/><rect x="16" y="4" width="4" height="17"/></svg>
+        </div>
+      </div>
+      <div id="fleet-chart">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">
+          No journey data yet.<br>Passengers must start journeys first.
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Log -->
+    <div class="card">
+      <div class="card-head">
+        <h3>System Event Log</h3>
+        <div class="card-icon ci-navy">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+      </div>
+      <div class="event-log" id="event-log">
+        <div class="log-line"><span class="log-time">[00:00:00]</span> <span class="log-normal">SmartStop AI system initialised</span></div>
+        <div class="log-line"><span class="log-time">[00:00:01]</span> <span class="log-success">Sensor arrays ONLINE — IR × 4, GPS active</span></div>
+        <div class="log-line"><span class="log-time">[00:00:01]</span> <span class="log-normal">Firebase Realtime DB connected</span></div>
+        <div class="log-line"><span class="log-time">[00:00:02]</span> <span class="log-success">AI Prediction Engine ready — Bayesian model loaded</span></div>
+      </div>
+
+      <!-- Simulated fleet passengers -->
+      <div style="margin-top:16px">
+        <label>Simulate Passengers at Stop</label>
+        <div class="flex gap-2" style="margin-top:8px">
+          <select id="sim-stop" style="flex:1">
+            <option value="">Select stop to add PAX</option>
+          </select>
+          <button class="btn btn-teal btn-sm btn-primary" onclick="addSimPax()">+ Add PAX</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SENSOR / IoT VIEW                                          -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page view" id="view-sensor">
+  <div class="sensor-grid">
+    <!-- Passenger Count -->
+    <div class="sensor-card">
+      <div class="sensor-head">
+        <div class="sensor-title">Passenger Counter</div>
+        <div class="status-pill sp-on">● ONLINE</div>
+      </div>
+      <div class="kpi-label">TOTAL ONBOARD</div>
+      <div class="sensor-val" id="sensor-count">0 <span class="sensor-unit">PAX</span></div>
+      <div class="mini-graph" id="count-graph"></div>
+      <div class="door-sim">
+        <button class="door-btn board" onclick="boardPax()">↓ Board +1</button>
+        <button class="door-btn alight" onclick="alightPax()">↑ Alight -1</button>
+      </div>
+    </div>
+
+    <!-- GPS Module -->
+    <div class="sensor-card">
+      <div class="sensor-head">
+        <div class="sensor-title">GPS Module</div>
+        <div class="status-pill sp-on">● ACTIVE</div>
+      </div>
+      <div class="kpi-label">CURRENT POSITION</div>
+      <div style="margin:10px 0">
+        <div style="font-family:var(--ff-mono);font-size:12px;color:var(--muted);margin-bottom:4px">LAT / LON</div>
+        <div style="font-family:var(--ff-head);font-size:16px;font-weight:700;color:var(--teal)" id="gps-pos">12.9716° N, 77.5946° E</div>
+      </div>
+      <div class="kpi-label" style="margin-top:12px">CURRENT STOP</div>
+      <div style="font-size:14px;font-weight:600;color:var(--body)" id="gps-stop">—</div>
+      <div class="mini-graph" style="margin-top:12px;background:rgba(17,197,191,.08)">
+        <div style="padding:10px;font-size:10px;color:var(--teal);font-family:var(--ff-mono)">
+          Neo-6M · UART 9600bd · NMEA GPRMC
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Confidence -->
+    <div class="sensor-card">
+      <div class="sensor-head">
+        <div class="sensor-title">AI Prediction Engine</div>
+        <div class="status-pill sp-on">● READY</div>
+      </div>
+      <div class="kpi-label">MODEL ACCURACY</div>
+      <div class="sensor-val">95<span class="sensor-unit">%</span></div>
+      <div class="flex col gap-2" style="margin-top:12px">
+        <div>
+          <div class="flex justify-b" style="margin-bottom:4px"><span style="font-size:11px;color:var(--muted)">Personalised (repeat route)</span><span style="font-size:11px;font-weight:700;color:var(--teal)">95%</span></div>
+          <div class="conf-track"><div class="conf-fill" style="width:95%!important;transition:none"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-b" style="margin-bottom:4px"><span style="font-size:11px;color:var(--muted)">Population model (new user)</span><span style="font-size:11px;font-weight:700;color:var(--coral)">72%</span></div>
+          <div class="conf-track"><div class="conf-fill" style="width:72%!important;transition:none;background:linear-gradient(90deg,var(--coral),#FF6B6B)"></div></div>
+        </div>
+        <div>
+          <div class="flex justify-b" style="margin-bottom:4px"><span style="font-size:11px;color:var(--muted)">Door sensor counting</span><span style="font-size:11px;font-weight:700;color:var(--emerald)">98%</span></div>
+          <div class="conf-track"><div class="conf-fill" style="width:98%!important;transition:none;background:linear-gradient(90deg,var(--emerald),#4ADE80)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firebase Status -->
+    <div class="sensor-card">
+      <div class="sensor-head">
+        <div class="sensor-title">Cloud Connectivity</div>
+        <div class="status-pill sp-on">● CONNECTED</div>
+      </div>
+      <div class="kpi-label">FIREBASE REALTIME DB</div>
+      <div style="margin:10px 0">
+        <div style="font-family:var(--ff-mono);font-size:11px;color:var(--muted);line-height:2">
+          ✅ smarts-db-prod.firebaseio.com<br>
+          ✅ FCM Push Gateway<br>
+          ✅ REST API endpoint<br>
+          ✅ Auth tokens valid
+        </div>
+      </div>
+      <div class="flex justify-b" style="margin-top:12px">
+        <div class="tag tag-teal">Latency: 12ms</div>
+        <div class="tag tag-emerald">Uptime: 99.8%</div>
+      </div>
+    </div>
+
+    <!-- Alert Module -->
+    <div class="sensor-card">
+      <div class="sensor-head">
+        <div class="sensor-title">Alert Module</div>
+        <div class="status-pill sp-on">● ARMED</div>
+      </div>
+      <div class="kpi-label">CHANNELS ACTIVE</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <div style="background:var(--surface);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">
+          <div style="font-size:22px;margin-bottom:4px">📱</div>
+          <div style="font-size:11px;font-weight:600;color:var(--teal)">PUSH</div>
+        </div>
+        <div style="background:var(--surface);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">
+          <div style="font-size:22px;margin-bottom:4px">🔊</div>
+          <div style="font-size:11px;font-weight:600;color:var(--teal)">VOICE TTS</div>
+        </div>
+        <div style="background:var(--surface);border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border)">
+          <div style="font-size:22px;margin-bottom:4px">📳</div>
+          <div style="font-size:11px;font-weight:600;color:var(--teal)">HAPTIC</div>
+        </div>
+        <div style="background:rgba(232,71,63,.08);border-radius:10px;padding:10px;text-align:center;border:1px solid rgba(232,71,63,.2)">
+          <div style="font-size:22px;margin-bottom:4px">🆘</div>
+          <div style="font-size:11px;font-weight:600;color:var(--coral)">SOS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hardware Specs -->
+    <div class="sensor-card sensor-row-full" style="grid-column:span 1">
+      <div class="sensor-head">
+        <div class="sensor-title">Hardware Inventory</div>
+        <div class="status-pill sp-on">● ALL NOMINAL</div>
+      </div>
+      <div class="hw-spec-grid">
+        <div class="hw-spec-item">
+          <div class="hw-name">Microcontroller</div>
+          <div class="hw-val">ESP32 · 240MHz</div>
+        </div>
+        <div class="hw-spec-item">
+          <div class="hw-name">IR Sensor</div>
+          <div class="hw-val">HC-SR04 × 4</div>
+        </div>
+        <div class="hw-spec-item">
+          <div class="hw-name">GPS Module</div>
+          <div class="hw-val">Neo-6M · UART</div>
+        </div>
+        <div class="hw-spec-item">
+          <div class="hw-name">Connectivity</div>
+          <div class="hw-val">Wi-Fi + 4G LTE</div>
+        </div>
+        <div class="hw-spec-item">
+          <div class="hw-name">Display</div>
+          <div class="hw-val">TFT 2.4" ILI9341</div>
+        </div>
+        <div class="hw-spec-item">
+          <div class="hw-name">Power</div>
+          <div class="hw-val">5V · 2.4A USB-C</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ELDERLY ASSIST VIEW                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page view" id="view-elderly">
+  <div class="elder-wrap">
+
+    <!-- Hero -->
+    <div class="elder-hero">
+      <div class="tag" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.9);margin-bottom:14px;font-size:13px">👴 Elderly & Accessibility Assistance Mode</div>
+      <h2>Safe Journey Mode</h2>
+      <p>Large text, voice guidance, and caregiver alerts for every milestone</p>
+
+      <div class="elder-dest-box" id="elder-dest-box">
+        <div class="lbl">Your Destination</div>
+        <div class="dest" id="elder-dest-text">Not set — please set up journey first</div>
+      </div>
+
+      <div class="elder-btn-grid">
+        <button class="elder-action-btn sos-big" onclick="triggerSOS()">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          🆘 SOS EMERGENCY
+        </button>
+        <button class="elder-action-btn ea-green" onclick="voiceAnnounce()">
+          <svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
+          Repeat Alert
+        </button>
+        <button class="elder-action-btn ea-blue" onclick="showNotifyCaregiver()">
+          <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .11h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          Call Caregiver
+        </button>
+      </div>
+    </div>
+
+    <!-- Caregiver & Milestones -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="caregiver-card">
+        <div class="card-head">
+          <h3>Caregiver Contacts</h3>
+          <div class="tag tag-teal">3 Registered</div>
+        </div>
+        <div class="cg-row">
+          <div class="cg-avatar" style="background:linear-gradient(135deg,#0B7A75,#0F2D55)">R</div>
+          <div class="cg-info">
+            <div class="name">Ramesh (Son)</div>
+            <div class="role">Primary Contact</div>
+          </div>
+          <button class="cg-notify" onclick="notifyCaregiver('Ramesh')">Notify</button>
+        </div>
+        <div class="cg-row">
+          <div class="cg-avatar" style="background:linear-gradient(135deg,#E8473F,#0F2D55)">P</div>
+          <div class="cg-info">
+            <div class="name">Priya (Daughter)</div>
+            <div class="role">Secondary Contact</div>
+          </div>
+          <button class="cg-notify" onclick="notifyCaregiver('Priya')">Notify</button>
+        </div>
+        <div class="cg-row">
+          <div class="cg-avatar" style="background:linear-gradient(135deg,#F5A623,#0F2D55)">D</div>
+          <div class="cg-info">
+            <div class="name">Driver Assist</div>
+            <div class="role">Vehicle Operator</div>
+          </div>
+          <button class="cg-notify" onclick="notifyCaregiver('Driver')">Notify</button>
+        </div>
+      </div>
+
+      <div class="caregiver-card">
+        <div class="card-head">
+          <h3>Journey Milestones</h3>
+        </div>
+        <div class="milestone-feed" id="milestone-feed">
+          <div class="milestone-item">
+            <div class="ms-icon" style="background:rgba(11,122,117,.1)">🚇</div>
+            <div class="ms-text">
+              <div class="ms-title">Journey mode activated</div>
+              <div class="ms-time">Awaiting journey start</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PATENT INFO VIEW                                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page view" id="view-patent">
+  <div class="patent-wrap">
+
+    <div class="patent-hero">
+      <div class="tag" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.9);margin-bottom:12px">📋 Innovation Disclosure</div>
+      <h2>AI-Based Smart Passenger Monitoring & Destination Alert System</h2>
+      <p>A novel AI-powered transit system combining IoT sensor arrays, machine learning destination prediction, and multi-modal alert delivery — prototype validated on Namma Metro, Bengaluru.</p>
+      <div class="patent-badges">
+        <span class="patent-badge">IPC: B61L 25/00</span>
+        <span class="patent-badge">IPC: G08G 1/00</span>
+        <span class="patent-badge">CPC: G06Q 50/40</span>
+        <span class="patent-badge">Lovely Professional University</span>
+        <span class="patent-badge">Complete Filing</span>
+      </div>
+    </div>
+
+    <div class="patent-grid">
+      <!-- Claims -->
+      <div class="card">
+        <div class="card-head"><h3>Patent Claims (7)</h3></div>
+        <ul class="claims-list">
+          <li><div class="claim-num">1</div><div class="claim-text">System for real-time intelligent passenger monitoring with AI inference engine predicting individual destination stops.</div></li>
+          <li><div class="claim-num">2</div><div class="claim-text">AI engine applying personalised travel history (Bayesian inference) to produce destination probability scores.</div></li>
+          <li><div class="claim-num">3</div><div class="claim-text">Smart Stop Alert Module delivering multi-modal notifications — push, voice TTS, and haptic feedback.</div></li>
+          <li><div class="claim-num">4</div><div class="claim-text">Elderly Assistance Mode with enlarged UI, voice guidance, and caregiver notification relay.</div></li>
+          <li><div class="claim-num">5</div><div class="claim-text">SOS Emergency Module enabling real-time passenger-to-operator communication with GPS logging.</div></li>
+          <li><div class="claim-num">6</div><div class="claim-text">Driver/Operator Fleet Dashboard rendering real-time disembarkation demand analytics per stop.</div></li>
+          <li><div class="claim-num" style="background:var(--coral)">7</div><div class="claim-text">Method for AI-based destination prediction: collect boarding data → Bayesian inference → confidence score → pre-arrival alert.</div></li>
+        </ul>
+      </div>
+
+      <!-- Research Gaps & Novelty -->
+      <div class="card">
+        <div class="card-head"><h3>Research Gap & Novelty</h3></div>
+        <div class="gap-grid">
+          <div class="gap-item">
+            <div class="gap-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+            <div class="gap-text"><div class="t">US20180365990A1 — PA Announcements</div><div class="d">Fixed broadcast without personalisation. <strong>Our novelty:</strong> Real-time identity inference + AI-driven personalised alerts per passenger.</div></div>
+          </div>
+          <div class="gap-item">
+            <div class="gap-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+            <div class="gap-text"><div class="t">US20150019124A1 — IR Counting</div><div class="d">Basic counting with no destination inference. <strong>Our novelty:</strong> ML inference on multi-source data without human intervention.</div></div>
+          </div>
+          <div class="gap-item">
+            <div class="gap-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+            <div class="gap-text"><div class="t">CN108022425A — Digital Signage</div><div class="d">Fixed display hardware, no intelligence. <strong>Our novelty:</strong> Self-learning multi-modal system with emergency communication.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventors -->
+      <div class="card">
+        <div class="card-head"><h3>Inventors</h3></div>
+        <div class="inventor-row">
+          <div class="inv-avatar" style="background:linear-gradient(135deg,var(--teal),var(--navy))">S</div>
+          <div class="inv-info">
+            <div class="name">Shreyas KS</div>
+            <div class="uid">UID: 12407112  ·  📞 7892689793</div>
+            <div class="inst">Lovely Professional University, Punjab</div>
+          </div>
+        </div>
+        <div class="inventor-row">
+          <div class="inv-avatar" style="background:linear-gradient(135deg,var(--coral),var(--navy))">K</div>
+          <div class="inv-info">
+            <div class="name">Kothamasu Anjana Karthik</div>
+            <div class="uid">UID: 12411006  ·  📞 8639115751</div>
+            <div class="inst">Lovely Professional University, Punjab</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--r-sm);padding:12px">
+          <div style="font-size:12px;color:#C87600;font-weight:600">Filing Type: <strong>Complete Filing</strong></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Commercialisation potential: ✅ HIGH</div>
+        </div>
+      </div>
+
+      <!-- Commercialisation -->
+      <div class="card">
+        <div class="card-head"><h3>Commercialisation Partners</h3></div>
+        <div class="company-grid">
+          <div class="company-item"><div class="cn">IRCTC</div><div class="cu">irctc.co.in</div></div>
+          <div class="company-item"><div class="cn">Namma Metro</div><div class="cu">bmrc.co.in</div></div>
+          <div class="company-item"><div class="cn">Delhi Metro</div><div class="cu">delhimetrorail.com</div></div>
+          <div class="company-item"><div class="cn">TCS Smart City</div><div class="cu">tcs.com</div></div>
+          <div class="company-item"><div class="cn">Wipro IoT</div><div class="cu">wipro.com</div></div>
+          <div class="company-item"><div class="cn">L&T Smart</div><div class="cu">lntsmart.com</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="kpi-label">Keywords</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+            <span class="tag tag-teal">Smart passenger alert</span>
+            <span class="tag tag-teal">AI destination prediction</span>
+            <span class="tag tag-teal">IoT transit</span>
+            <span class="tag tag-teal">Elderly assistance</span>
+            <span class="tag tag-teal">Occupancy analytics</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── SCRIPTS ─────────────────────────────────────────────────── -->
+<script>
+// ─── Data ─────────────────────────────────────────────────────────
+const STATIONS = {
+  Purple:["Whitefield (Kadugodi)","Hopefarm Channasandra","Kadugodi Tree Park","Pattandur Agrahara","Sri Sathya Sai Hospital","Nallurhalli","Kundalahalli","Seetharampalya","Hoodi","Garudacharapalya","Singayyanapalya","Krishnarajapura","Benniganahalli","Baiyappanahalli","Swami Vivekananda Road","Indiranagar","Halasuru","Trinity","Mahatma Gandhi Road","Cubbon Park","Vidhana Soudha","Sir M Visvesvaraya","Majestic","KSR Railway Station","Magadi Road","Hosahalli","Vijayanagar","Attiguppe","Deepanjali Nagar","Mysuru Road","Pantharapalya","Rajarajeshwari Nagar","Jnanabharathi","Pattanagere","Kengeri Bus Terminal","Kengeri","Challaghatta"],
+  Green:["Madavara","Chikkabidarakallu","Manjunath Nagar","Nagasandra","Dasarahalli","Jalahalli","Peenya Industry","Peenya","Goraguntepalya","Yeshwanthpur","Sandal Soap Factory","Mahalakshmi","Rajajinagar","Mahakavi Kuvempu Road","Srirampura","Sampige Road","Majestic","Chickpete","KR Market","National College","Lalbagh","South End Circle","Jayanagar","RV Road","Banashankari","Jayaprakash Nagar","Yelachenahalli","Konanakunte Cross","Doddakallasandra","Vajarahalli","Thalaghattapura","Silk Institute"]
+};
+
+let state = {
+  user: '',
+  elderlyMode: false,
+  history: JSON.parse(localStorage.getItem('ss_history')||'{}'),
+  fleetMap: {},
+  journey: { active:false, route:[], current:0, target:0, destName:'' },
+  kpi: { onboard:0, sos:0, pred:0, stops:0 },
+  logLines: [],
+};
+
+// ─── Toast ─────────────────────────────────────────────────────────
+function toast(msg, type='info', dur=3200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${type}`;
+  setTimeout(()=>{ el.className = el.className.replace('show',''); }, dur);
+}
+
+// ─── Log ───────────────────────────────────────────────────────────
+function log(msg, cls='normal') {
+  const t = new Date().toLocaleTimeString('en-IN',{hour12:false});
+  const el = document.getElementById('event-log');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">[${t}]</span> <span class="log-${cls}">${msg}</span>`;
+  el.insertBefore(line, el.firstChild);
+}
+
+// ─── View Switching ────────────────────────────────────────────────
+function switchView(v, btn) {
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  btn.classList.add('active');
+  if(v==='driver') updateFleetChart();
+  if(v==='sensor') updateSensorView();
+}
+
+// ─── Login ─────────────────────────────────────────────────────────
+function appLogin() {
+  const n = document.getElementById('login-name').value.trim();
+  if(!n){ toast('Please enter your name','warning'); return; }
+  state.user = n;
+  document.getElementById('login-overlay').style.display='none';
+  document.getElementById('nav-name').textContent = n;
+  document.getElementById('nav-avatar').textContent = n[0].toUpperCase();
+  toast(`Welcome, ${n}! AI system ready 🚇`,'success');
+  log(`Passenger "${n}" authenticated — session started`,'success');
+  populateSimStops();
+}
+
+// ─── Stops Loading ─────────────────────────────────────────────────
+function loadStops() {
+  const line = document.getElementById('line-sel').value;
+  const sel  = document.getElementById('src-sel');
+  sel.innerHTML = '<option value="">— Select Entry Stop —</option>';
+  document.getElementById('ai-block').style.display='none';
+  document.getElementById('manual-wrap').style.display='none';
+  if(!line) return;
+  STATIONS[line].forEach(s=>{ const o=document.createElement('option'); o.value=o.textContent=s; sel.appendChild(o); });
+  state.kpi.stops++;
+  updateKPIs();
+}
+
+// ─── AI Inference ──────────────────────────────────────────────────
+function runAI() {
+  const line = document.getElementById('line-sel').value;
+  const src  = document.getElementById('src-sel').value;
+  if(!line||!src) return;
+
+  let dest='', meta='', conf=0;
+  const hist = state.history[state.user]?.[src];
+  if(hist) {
+    dest = Object.keys(hist).sort((a,b)=>hist[b]-hist[a])[0];
+    meta = `Behavioural Intelligence: ${hist[dest]} similar trips found in your profile.`;
+    conf = 95;
+  } else {
+    const stops = STATIONS[line];
+    dest = stops[Math.floor(stops.length*0.75)]; // typical far stop
+    meta = 'Population Model: High-volume interchange inferred from network dataset.';
+    conf = 72;
+  }
+
+  document.getElementById('ai-dest-text').textContent = dest;
+  document.getElementById('ai-meta-text').textContent = meta;
+  document.getElementById('ai-conf-label').textContent = `Confidence: ${conf}%`;
+  setTimeout(()=>{ document.getElementById('ai-conf-fill').style.width = conf+'%'; },100);
+  document.getElementById('ai-block').style.display='block';
+  document.getElementById('manual-wrap').style.display='none';
+
+  state.kpi.pred++;
+  updateKPIs();
+  log(`AI predicted destination for "${state.user}": ${dest} (${conf}% confidence)`,'success');
+}
+
+// ─── Manual Mode ───────────────────────────────────────────────────
+function showManual() {
+  const line = document.getElementById('line-sel').value;
+  const sel  = document.getElementById('manual-sel');
+  sel.innerHTML = '';
+  STATIONS[line].forEach(s=>{ const o=document.createElement('option'); o.value=o.textContent=s; sel.appendChild(o); });
+  document.getElementById('ai-block').style.display='none';
+  document.getElementById('manual-wrap').style.display='block';
+}
+
+// ─── Confirm Journey ───────────────────────────────────────────────
+function confirmJourney(fromAI) {
+  const line = document.getElementById('line-sel').value;
+  const src  = document.getElementById('src-sel').value;
+  const dest = fromAI ? document.getElementById('ai-dest-text').textContent
+                      : document.getElementById('manual-sel').value;
+
+  const route = STATIONS[line];
+  const si = route.indexOf(src), ti = route.indexOf(dest);
+  if(si<0||ti<0||si===ti){ toast('Invalid route selection','warning'); return; }
+
+  state.journey = { active:true, route, current:si, target:ti, destName:dest };
+  state.fleetMap[dest] = (state.fleetMap[dest]||0)+1;
+  state.kpi.onboard++;
+  updateKPIs();
+  updateHeroStats();
+  updateSensorKPI();
+
+  // UI transitions
+  document.getElementById('setup-form').style.display='none';
+  document.getElementById('tracking-active').style.display='block';
+  const mc = document.getElementById('map-card');
+  mc.style.opacity='1'; mc.style.pointerEvents='auto';
+  document.getElementById('tracking-dest').textContent = dest;
+  document.getElementById('dest-display').classList.add('locked');
+  document.getElementById('tracking-sub').textContent = `Destination: ${dest}`;
+
+  // Elderly mode sync
+  document.getElementById('elder-dest-text').textContent = dest;
+  addMilestone('🚇','Journey started','Boarded at '+src);
+
+  updateTimeline();
+  log(`Journey confirmed for "${state.user}" — ${src} → ${dest}`,'success');
+  toast(`Journey started! AI tracking to ${dest} 🎯`,'success');
+  if(state.elderlyMode) voiceAnnounce();
+}
+
+// ─── Timeline ──────────────────────────────────────────────────────
+function updateTimeline() {
+  const {route, current, target} = state.journey;
+  const el = document.getElementById('route-path');
+  el.innerHTML='';
+
+  // Show window: 3 before current, current, up to 3 after, target area
+  const show = new Set();
+  for(let i=Math.max(0,current-2);i<=Math.min(route.length-1,current+3);i++) show.add(i);
+  for(let i=Math.max(0,target-1);i<=Math.min(route.length-1,target+1);i++) show.add(i);
+
+  let prev=-1;
+  [...show].sort((a,b)=>a-b).forEach(i=>{
+    if(prev!==-1 && i-prev>1){
+      const skip=document.createElement('div');
+      skip.style.cssText='padding:4px 0;font-size:11px;color:var(--muted);padding-left:4px';
+      skip.textContent=`··· ${i-prev-1} stops ···`;
+      el.appendChild(skip);
+    }
+    const div=document.createElement('div');
+    div.className='stop-row'+(i<current?' passed':i===current?' current':i===target?' target':'');
+    const badge = i===current?`<span class="stop-badge tag-teal tag" style="margin-left:auto">HERE</span>`:
+                  i===target?`<span class="stop-badge tag-coral tag" style="margin-left:auto">DEST</span>`:'';
+    div.innerHTML=`<span class="stop-name">${route[i]}</span>${badge}`;
+    el.appendChild(div);
+    prev=i;
+  });
+
+  // Progress %
+  const total=Math.abs(target-current)+Math.abs(current-(target>current?target:current));
+  const traveled=Math.abs(current-(state.journey.route.indexOf(document.getElementById('src-sel').value)||current));
+  const totalDist=Math.abs(target-(state.journey.route.indexOf(document.getElementById('src-sel').value)||0))||1;
+  const pct=Math.round(traveled/totalDist*100);
+  document.getElementById('prog-fill').style.width=Math.min(pct,100)+'%';
+  document.getElementById('prog-pct').textContent=Math.min(pct,100)+'%';
+}
+
+// ─── Advance Station ───────────────────────────────────────────────
+function advanceStation() {
+  if(!state.journey.active) return;
+  const {route, target} = state.journey;
+  if(state.journey.current >= route.length-1) return;
+  state.journey.current++;
+  const cur = state.journey.current;
+  const curName = route[cur];
+  log(`Vehicle arrived at: ${curName}`,'normal');
+  updateTimeline();
+  state.kpi.stops++;
+  updateKPIs();
+  updateSensorKPI();
+  addMilestone('📍',`Passed ${curName}`, new Date().toLocaleTimeString());
+  updateGPSDisplay(curName);
+
+  if(cur === target-1) {
+    toast(`🔔 NEXT STOP: ${route[target]} — Prepare to alight!`,'warning',5000);
+    log(`⚡ PROXIMITY ALERT — Next stop is destination: ${route[target]}`,'alert');
+    addMilestone('🔔','Pre-arrival alert sent',`Next: ${route[target]}`);
+    if(state.elderlyMode) voiceAnnounce();
+  }
+
+  if(cur === target) {
+    toast(`🎉 ARRIVED at ${curName}! Have a safe onward journey.`,'success',5000);
+    log(`✅ Passenger "${state.user}" arrived at destination: ${curName}`,'success');
+    addMilestone('✅','Arrived at destination',curName);
+    saveTrip();
+    state.fleetMap[curName] = Math.max(0,(state.fleetMap[curName]||1)-1);
+    state.kpi.onboard = Math.max(0,state.kpi.onboard-1);
+    updateHeroStats();
+    updateKPIs();
+    updateFleetChart();
+    setTimeout(resetJourney, 3000);
+  }
+}
+
+// ─── Save Trip ─────────────────────────────────────────────────────
+function saveTrip() {
+  const src = document.getElementById('src-sel').value;
+  const dest = state.journey.destName;
+  if(!state.history[state.user]) state.history[state.user]={};
+  if(!state.history[state.user][src]) state.history[state.user][src]={};
+  state.history[state.user][src][dest] = (state.history[state.user][src][dest]||0)+1;
+  localStorage.setItem('ss_history', JSON.stringify(state.history));
+}
+
+// ─── Reset Journey ─────────────────────────────────────────────────
+function resetJourney() {
+  state.journey = {active:false, route:[], current:0, target:0, destName:''};
+  document.getElementById('setup-form').style.display='block';
+  document.getElementById('tracking-active').style.display='none';
+  document.getElementById('ai-block').style.display='none';
+  document.getElementById('manual-wrap').style.display='none';
+  document.getElementById('line-sel').value='';
+  document.getElementById('src-sel').innerHTML='<option>— Select Entry Stop —</option>';
+  const mc=document.getElementById('map-card');
+  mc.style.opacity='.3'; mc.style.pointerEvents='none';
+  document.getElementById('tracking-dest').textContent='—';
+  document.getElementById('dest-display').classList.remove('locked');
+  document.getElementById('route-path').innerHTML='';
+  document.getElementById('prog-fill').style.width='0';
+  document.getElementById('prog-pct').textContent='0%';
+}
+
+// ─── SOS ───────────────────────────────────────────────────────────
+function triggerSOS() {
+  state.kpi.sos++;
+  updateKPIs();
+  toast('🆘 SOS TRANSMITTED — Driver and caregivers notified!','danger',6000);
+  log(`!!! SOS ALERT !!! User: "${state.user}" — GPS: 12.9716N 77.5946E`,'danger');
+  addMilestone('🆘','SOS Alert Triggered', new Date().toLocaleTimeString());
+  navigator.vibrate && navigator.vibrate([300,100,300,100,300]);
+}
+
+// ─── Elderly Mode ──────────────────────────────────────────────────
+function toggleElderly() {
+  state.elderlyMode = document.getElementById('elderly-toggle').checked;
+  toast(state.elderlyMode ? '👴 Elderly Mode ON — enhanced alerts active' : 'Standard mode', state.elderlyMode?'info':'info');
+  log(`Elderly mode ${state.elderlyMode?'ENABLED':'DISABLED'} for "${state.user}"`, state.elderlyMode?'alert':'normal');
+}
+
+function voiceAnnounce() {
+  const dest = state.journey.active ? state.journey.destName : 'your destination';
+  const msg = state.journey.active
+    ? `Alert. Your destination, ${dest}, is approaching. Please prepare to alight.`
+    : `SmartStop AI Elderly Assist Mode is active. Your journey is being monitored.`;
+  if('speechSynthesis' in window) {
+    const utt = new SpeechSynthesisUtterance(msg);
+    utt.rate=0.9; utt.pitch=1; utt.volume=1;
+    window.speechSynthesis.speak(utt);
+  }
+  toast('🔊 Voice alert spoken','info');
+}
+
+function showNotifyCaregiver() { notifyCaregiver('all contacts'); }
+function notifyCaregiver(name) {
+  toast(`📲 ${name} notified about your journey status`,'success');
+  log(`Caregiver notification sent to: ${name}`,'success');
+  addMilestone('📲',`${name} notified`,new Date().toLocaleTimeString());
+}
+
+// ─── Milestones ────────────────────────────────────────────────────
+function addMilestone(icon, title, time) {
+  const feed = document.getElementById('milestone-feed');
+  const item = document.createElement('div');
+  item.className='milestone-item';
+  item.innerHTML=`<div class="ms-icon" style="background:rgba(11,122,117,.1)">${icon}</div><div class="ms-text"><div class="ms-title">${title}</div><div class="ms-time">${time}</div></div>`;
+  feed.insertBefore(item, feed.firstChild);
+}
+
+// ─── Fleet Chart ───────────────────────────────────────────────────
+function updateFleetChart() {
+  const el = document.getElementById('fleet-chart');
+  const entries = Object.entries(state.fleetMap).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">No demand data yet.<br>Passengers must start journeys first.</div>'; return; }
+  const max = Math.max(...entries.map(([,v])=>v));
+  el.innerHTML = entries.slice(0,8).map(([stop,pax])=>{
+    const pct = Math.round(pax/max*100);
+    const col = pct>70?'var(--coral)':pct>40?'var(--amber)':'var(--teal)';
+    return `<div class="fleet-item"><div class="fleet-meta"><span class="stop">${stop}</span><span class="pax">${pax} PAX</span></div><div class="fleet-track"><div class="fleet-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  }).join('');
+}
+
+// ─── Simulate PAX ──────────────────────────────────────────────────
+function addSimPax() {
+  const stop = document.getElementById('sim-stop').value;
+  if(!stop){toast('Select a stop','warning');return;}
+  state.fleetMap[stop]=(state.fleetMap[stop]||0)+1;
+  state.kpi.onboard++;
+  updateFleetChart();
+  updateKPIs();
+  updateHeroStats();
+  log(`Simulated passenger added — Destination: ${stop}`,'normal');
+  toast(`+1 PAX heading to ${stop}`,'info');
+}
+
+function populateSimStops() {
+  const sel=document.getElementById('sim-stop');
+  const all=[...STATIONS.Purple,...STATIONS.Green];
+  all.forEach(s=>{const o=document.createElement('option');o.value=o.textContent=s;sel.appendChild(o);});
+}
+
+// ─── KPIs ──────────────────────────────────────────────────────────
+function updateKPIs() {
+  document.getElementById('kpi-onboard').textContent=state.kpi.onboard;
+  document.getElementById('kpi-sos').textContent=state.kpi.sos;
+  document.getElementById('kpi-pred').textContent=state.kpi.pred;
+  document.getElementById('kpi-stops').textContent=state.kpi.stops;
+}
+function updateHeroStats() { document.getElementById('stat-onboard').textContent=state.kpi.onboard; }
+function updateSensorKPI() { document.getElementById('sensor-count').innerHTML=state.kpi.onboard+' <span class="sensor-unit">PAX</span>'; drawMiniGraph(); }
+function updateSensorView() { updateSensorKPI(); }
+
+// ─── Sensor Buttons ────────────────────────────────────────────────
+function boardPax(){ state.kpi.onboard++; updateHeroStats(); updateKPIs(); updateSensorKPI(); log('Door sensor: +1 passenger boarded','success'); }
+function alightPax(){ if(state.kpi.onboard>0){state.kpi.onboard--;} updateHeroStats(); updateKPIs(); updateSensorKPI(); log('Door sensor: -1 passenger alighted','normal'); }
+
+// ─── Mini Graph ────────────────────────────────────────────────────
+const graphHistory=[0,0,0,0,0,0,0,0,0,0];
+function drawMiniGraph(){
+  graphHistory.push(state.kpi.onboard);
+  graphHistory.shift();
+  const el=document.getElementById('count-graph');
+  if(!el)return;
+  const max=Math.max(...graphHistory,1);
+  el.innerHTML='<div style="display:flex;align-items:flex-end;height:100%;gap:3px;padding:4px">'
+    +graphHistory.map(v=>`<div class="mini-bar" style="flex:1;height:${Math.max(6,Math.round(v/max*36))}px"></div>`).join('')+'</div>';
+}
+
+// ─── GPS Display ───────────────────────────────────────────────────
+function updateGPSDisplay(stopName){
+  document.getElementById('gps-stop').textContent=stopName;
+  const lat=(12.9716+Math.random()*0.02-0.01).toFixed(4);
+  const lon=(77.5946+Math.random()*0.02-0.01).toFixed(4);
+  document.getElementById('gps-pos').textContent=`${lat}° N, ${lon}° E`;
+}
+
+// ─── Init ──────────────────────────────────────────────────────────
+populateSimStops();
+log('SmartStop AI — Prototype interface loaded','success');
+log('Namma Metro network data loaded (Purple & Green Lines)','normal');
+log('Waiting for passenger login...','normal');
+
+// Simulate live KPI tick
+setInterval(()=>{
+  if(state.journey.active){
+    const fl=state.fleetMap; let total=0;
+    Object.values(fl).forEach(v=>total+=v);
+    document.getElementById('stat-onboard').textContent=state.kpi.onboard;
+  }
+},5000);
+</script>
+</body>
+</html>
